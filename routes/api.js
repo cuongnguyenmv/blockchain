@@ -5,7 +5,25 @@ const utils = require('./../utils');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const tokenList = {};
+const blockcontroller = require('./../controllers/blockcontrollers')
 // login
+// Router.post('/register',(req ,res )=>{
+//   const postData = req.bodyParser
+//   const user = {
+//     "email": postData.email,
+//     "name": postData.name,
+//     "password" : postData.password
+//   },
+//   // Kiem tra user neu ton tai thi 
+//   if(){
+//     res.send("Users exists")
+//   }
+//   else
+//   {
+    
+//   }
+// })
+
 router.post('/login', (req, res) => {
   const postData = req.body;
   const user = {
@@ -87,11 +105,10 @@ const TokenCheckMiddleware = async (req, res, next) => {
     });
   }
 }
-router.use(TokenCheckMiddleware);
+// router.use(TokenCheckMiddleware);
 router.get('/profile', (req, res) => {
   // all secured routes goes here
   res.json(req.decoded)
 })
-
-
+router.get('/create-block',blockcontroller.pow)
 module.exports = router

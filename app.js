@@ -6,9 +6,8 @@ const express = require('express');
 const app = express();
 const router = express.Router();
 const api = require('./routes/api')
-router.get('/', (req, res) => {
-  res.send('Ok');
-});
+const blockchain = require('./controllers/blockcontrollers')
+
 
 /**
  * Middleware xác thực người dùng dựa vào mã token
@@ -24,6 +23,7 @@ app.use('/api', api);
 app.listen(80, function () {
   console.log('Server is running port 80!');
 });
+
 
 
 module.exports = app
