@@ -1,33 +1,55 @@
 const crypto = require('crypto')
 const EC = require('elliptic').ec
 const ec = new EC('secp256k1')
-const key = ec.genKeyPair()
-const publicKey = key.getPublic('hex')
-const privateKey1 = key.getPrivate('hex')
-const privateKey2 = key.getPrivate('hex')
-console.log('public key' + publicKey)
-console.log('privateKey '+ privateKey1)
-console.log('privateKey '+ privateKey2)
+// const key = ec.genKeyPair()
+// const publicKey = key.getPublic('hex')
+// const privateKey1 = key.getPrivate('hex')
+// const privateKey2 = key.getPrivate('hex')
+// console.log('public key' + publicKey)
+// console.log('privateKey '+ privateKey1)
+const myKey = ec.keyFromPrivate('84b73263660300ddc871b190e725a9fd6488d6c12885d8a602b717b6d9b0acce')
+const myWalletAddress  = myKey.getPublic('hex')
+
+
+
 class Transaction{
 	constructor(fromAddress,toAddress,amount){
 		this.fromAddress = fromAddress
 		this.toAddress = toAddress
-		this.amount = this.amount
+		this.amount = amount
+	}
+	calculateHash(){
+		return crypto.createHmac('sha256','12312321')
+                   .update(this.fromAddress + this.toAddress + this.amount)
+                   .digest('hex')
+	}
+	signTransaction(signingKey){
+		if(signingKey.getPublic('hex') !== this.fromAddress)
+			throw new Error('You cannot sign transactions for other wallets')
+		const hashTx = this.calculateHash()
+		const sig = signingKey.sign(hashTx,'base64')
+		this.signature = sig.toDER('hex')
+	}
+	isValid(){
+		if(this.fromAddress === null) return true;
+		if(!this.signature|| this.signature.length === 0)
+			throw new Error('No signature in this transaction')
+		const publicKey = ec.keyFromPublic(this.fromAddress,'hex')
+		return publicKey.verify(this.calculateHash(),this.signature)
 	}
 }
 class Block{
-	constructor(index, timetamp,data,preHash =""){
-		this.index = index
+	constructor(timetamp,transaction,preHash =""){
 		this.timetamp = timetamp
-		this.data =data
 		this.preHash = preHash
+		this.transaction = transaction
 		this.hash = this.calculateHash()
 		this.nonce = 0
 		
 	}
 	calculateHash(){
 		return crypto.createHmac('sha256','12312321')
-                   .update(this.index + this.preHash + this.timetamp + JSON.stringify(this.data) + this.nonce)
+                   .update(this.index + this.preHash + this.timetamp + JSON.stringify(this.transaction) + this.nonce)
                    .digest('hex')
 	}
 	mineBlock(difficulty){
@@ -37,27 +59,36 @@ class Block{
 		}
 		console.log("Block mined: "+ this.hash)
 	}
+	hashValidTransaction(){
+		for(const tx of this.transaction){
+			if(!tx.isValid()) return false
+		}
+	return true
+	}
 }
 class Blockchain{
 	constructor(){
 		this.chain = [this.createGenesisBlock()]
 		this.difficulty = 4
+		this.pendingTransaction = []
+		this.miningReward = 100;
 	}
 	createGenesisBlock(){
-		return new Block(0,'01/01/2017','Geneis block',"0")
+		return new Block('01/01/2017','Geneis block',"0")
 	}
 	getLastestBlock(){
 		return this.chain[this.chain.length -1]
 	}
-	addBlock(newBlock){
-		newBlock.preHash = this.getLastestBlock().hash
-		newBlock.mineBlock(this.difficulty)
-		this.chain.push(newBlock)
-	}
+	// addBlock(newBlock){
+	// 	newBlock.preHash = this.getLastestBlock().hash
+	// 	newBlock.mineBlock(this.difficulty)
+	// 	this.chain.push(newBlock)
+	// }
 	isChainValid(){
 		for(var i = 1; i < this.chain.length; i++){
 			const curBlock = this.chain[i]
 			const preBlock = this.chain[i-1]
+			if(!curBlock.hashValidTransaction()) return false
 			if(curBlock.hash !== curBlock.calculateHash())
 			{
 				return false;
@@ -67,7 +98,48 @@ class Blockchain{
 		}
 		return true
 	}
+	minePendingTransactions(miningRewardAddress){
+		let block = new Block(Date.now(),this.pendingTransaction)
+		block.preHash = this.getLastestBlock().hash
+		block.mineBlock(this.difficulty)
+		console.log("Block successfull mined :!!")
+		this.chain.push(block)
+		this.pendingTransaction = [
+		 	new Transaction(null,miningRewardAddress,this.miningReward)
+		]
+	}
+	addsTransaction(transaction){
+		if(!transaction.fromAddress || !transaction.toAddress)
+			throw new Error('Transaction must include from and to address')
+		if(!transaction.isValid())
+			throw new Error('Cannot add invalid transaction to chain')
+		this.pendingTransaction.push(transaction)
+	}
+	getBalanceOfAddress(address){
+		let balance = 0 
+		for(const block of this.chain){
+			for(const trans of block.transaction){
+				if(trans.fromAddress === address)
+					balance -= trans.amount
+				if(trans.toAddress === address)
+					balance += trans.amount
+			}
+		}
+		return balance;
+	}
 }
 
+const tx1 = new Transaction(myWalletAddress,'public key goes here',10)
+tx1.signTransaction(myKey)
 let coin = new Blockchain()
-coin.addBlock(new Block(1,'10/12/2017',{amount:4}))
+coin.addsTransaction(tx1)
+console.log("\n Starting the miner ....")
+coin.minePendingTransactions(myWalletAddress)
+console.log("\n Balance of xaviers is: "+ coin.getBalanceOfAddress(myWalletAddress))
+console.log("\n Starting the miner ....")
+coin.minePendingTransactions(myWalletAddress)
+console.log("\n Balance of xaviers is: "+ coin.getBalanceOfAddress(myWalletAddress))
+
+console.log(JSON.stringify(coin,null,4))
+
+console.log("Check block : "+ coin.isChainValid())
