@@ -1,4 +1,6 @@
 const express = require('express');
+const md5 = require('md5');
+const sql = require('mssql')
 const router = express.Router();
 const config = require('./../config')
 const utils = require('./../utils');
@@ -6,25 +8,54 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const tokenList = {};
 const blockcontroller = require('./../controllers/blockcontrollers')
+const usersmodel = require('./../model/UsersModel')
+const blockmodel = require('./../model/BlockModel')
+const EC = require('elliptic').ec
+const ec = new EC('secp256k1')
+const fs = require('fs')
 // login
-// Router.post('/register',(req ,res )=>{
-//   const postData = req.bodyParser
-//   const user = {
-//     "email": postData.email,
-//     "name": postData.name,
-//     "password" : postData.password
-//   },
-//   // Kiem tra user neu ton tai thi 
-//   if(){
-//     res.send("Users exists")
-//   }
-//   else
-//   {
-    
-//   }
-// })
 
-router.post('/login', (req, res) => {
+const db = {
+        user: 'sa',
+        password: 'Cu@ng123',
+        server: '127.0.0.1', 
+        database: 'Blockchain',
+        port: 1433
+    }
+
+router.get('/index',(req,res) => {
+  res.send('ok')
+})
+
+router.post('/register',  (req, res ) =>{
+  const postData = req.body
+   const user = {
+    "email": postData.email,
+    "name": postData.name,
+    "password" : postData.password,
+    "confirmpwd":postData.confirmpwd
+  }
+  // if(user.password !== user.confirmpwd)
+  //   throw new Error("Nhap password sai ")
+  // if(usersmodel.getUser){
+  //    throw new Error("User ton tai ")
+  // }
+
+
+  const keyprivate = ec.keyFromPrivate(md5(user.email+md5(user.password)))
+  const wallet = keyprivate.getPublic('hex')
+  // const prehash = blockmodel.myfunc().curBlock()
+  let pool = sql.connect(db)
+    var request = new sql.Request()
+    request.stream = true
+    request.query("SELECT TOP 1 * FROM curBlock order by id DESC")
+    request.on('row', row  => {
+       usersmodel.regisUser(user.name, user.email, user.password,wallet,row.curhas )
+
+    })
+   
+})
+router.post('/login',  (req, res) => {
   const postData = req.body;
   const user = {
     "email": postData.email,
@@ -106,9 +137,13 @@ const TokenCheckMiddleware = async (req, res, next) => {
   }
 }
 // router.use(TokenCheckMiddleware);
-router.get('/profile', (req, res) => {
-  // all secured routes goes here
-  res.json(req.decoded)
-})
-router.get('/create-block',blockcontroller.pow)
+// router.get('/profile', (req, res) => {
+//   // all secured routes goes here
+//   res.json(req.decoded)
+// })
+
+// router.get('nap-tien',(req,res) => {
+//    blockcontroller.NapTien = 
+// })
+
 module.exports = router

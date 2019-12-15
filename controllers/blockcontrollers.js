@@ -1,14 +1,16 @@
 const crypto = require('crypto')
 const EC = require('elliptic').ec
 const ec = new EC('secp256k1')
+const fs = require('fs')
+const blockmodel = require('./../model/BlockModel')
+const md5 = require('md5');
 // const key = ec.genKeyPair()
 // const publicKey = key.getPublic('hex')
 // const privateKey1 = key.getPrivate('hex')
 // const privateKey2 = key.getPrivate('hex')
 // console.log('public key' + publicKey)
 // console.log('privateKey '+ privateKey1)
-const myKey = ec.keyFromPrivate('84b73263660300ddc871b190e725a9fd6488d6c12885d8a602b717b6d9b0acce')
-const myWalletAddress  = myKey.getPublic('hex')
+
 
 
 
@@ -39,7 +41,8 @@ class Transaction{
 	}
 }
 class Block{
-	constructor(timetamp,transaction,preHash =""){
+	constructor(id,timetamp,transaction,preHash =""){
+		this.index = id
 		this.timetamp = timetamp
 		this.preHash = preHash
 		this.transaction = transaction
@@ -57,7 +60,9 @@ class Block{
 			this.nonce++
 			this.hash = this.calculateHash()
 		}
-		console.log("Block mined: "+ this.hash)
+		if(blockmodel.myfunc().saveBlock(this.index, this.preHash, this.timetamp , this.nonce , this.hash))
+			console.log("Block mined: "+ this.hash)
+		else console.log('Errors')
 	}
 	hashValidTransaction(){
 		for(const tx of this.transaction){
@@ -68,13 +73,14 @@ class Block{
 }
 class Blockchain{
 	constructor(){
+		this.index = 0;
 		this.chain = [this.createGenesisBlock()]
 		this.difficulty = 4
 		this.pendingTransaction = []
 		this.miningReward = 100;
 	}
 	createGenesisBlock(){
-		return new Block('01/01/2017','Geneis block',"0")
+		return new Block(this.index++ ,'01/01/2017','Geneis block',"0")
 	}
 	getLastestBlock(){
 		return this.chain[this.chain.length -1]
@@ -98,15 +104,16 @@ class Blockchain{
 		}
 		return true
 	}
-	minePendingTransactions(miningRewardAddress){
-		let block = new Block(Date.now(),this.pendingTransaction)
+	minePendingTransactions(fromadd=null,miningRewardAddress,money,key){
+		const tx1 = new Transaction(fromadd,miningRewardAddress,money)
+		if(fromadd !== null){
+			tx1.signTransaction(keyprivate)
+		}
+		let block = new Block(this.index++ ,Date.now(),)
 		block.preHash = this.getLastestBlock().hash
 		block.mineBlock(this.difficulty)
 		console.log("Block successfull mined :!!")
 		this.chain.push(block)
-		this.pendingTransaction = [
-		 	new Transaction(null,miningRewardAddress,this.miningReward)
-		]
 	}
 	addsTransaction(transaction){
 		if(!transaction.fromAddress || !transaction.toAddress)
@@ -128,18 +135,41 @@ class Blockchain{
 		return balance;
 	}
 }
+const coin = new Blockchain()
+module.exports = {
+	NapTien:(wallets,money)=>{
+		coin.minePendingTransactions(wallets,money)
+		var data = JSON.stringify(coin,null,4)
+		console.log(data)
+		fs.writeFile('temp.txt',data,(error) => {
+			if(error) console.log(error)
+			console.log("successfull")
+		})
+	},
+	GiaoDich:(from , to , money) => {
+		
+	}
 
-const tx1 = new Transaction(myWalletAddress,'public key goes here',10)
-tx1.signTransaction(myKey)
-let coin = new Blockchain()
-coin.addsTransaction(tx1)
-console.log("\n Starting the miner ....")
-coin.minePendingTransactions(myWalletAddress)
-console.log("\n Balance of xaviers is: "+ coin.getBalanceOfAddress(myWalletAddress))
-console.log("\n Starting the miner ....")
-coin.minePendingTransactions(myWalletAddress)
-console.log("\n Balance of xaviers is: "+ coin.getBalanceOfAddress(myWalletAddress))
 
-console.log(JSON.stringify(coin,null,4))
+}
 
-console.log("Check block : "+ coin.isChainValid())
+  const keyprivate = ec.keyFromPrivate(md5("cuongnguyen07081997@gmail.com"+"Cu@ng123"))
+  const wallet = keyprivate.getPublic('hex')
+
+// const tx1 = new Transaction(wallet,'public key goes here',10)
+// tx1.signTransaction(keyprivate)
+// let coin = new Blockchain()
+// coin.addsTransaction(tx1)
+// console.log("\n Starting the miner ....")
+// coin.minePendingTransactions(wallet)
+// coin.minePendingTransactions(wallet)
+// coin.minePendingTransactions(wallet)
+// coin.minePendingTransactions(wallet)
+// console.log("\n Starting the miner ....")
+// coin.minePendingTransactions(myWalletAddress)
+// console.log(coin.chain)
+
+// fs.writeFile('temp.txt',data,(error) => {
+// 	if(error) console.log(error)
+// 	console.log("successfull")
+// })
