@@ -109,7 +109,7 @@ class Blockchain{
 		if(fromadd !== null){
 			tx1.signTransaction(keyprivate)
 		}
-		let block = new Block(this.index++ ,Date.now(),)
+		let block = new Block(this.index++ ,Date.now(),tx1)
 		block.preHash = this.getLastestBlock().hash
 		block.mineBlock(this.difficulty)
 		console.log("Block successfull mined :!!")
@@ -147,7 +147,7 @@ module.exports = {
 		})
 	},
 	GiaoDich:(from , to , money) => {
-		
+
 	}
 
 
